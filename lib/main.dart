@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'classes_and_functions.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,63 +11,87 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-
-        primarySwatch: Colors.blue,
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text("Sample Shopping App"),
+        ),
+        body: ShoppingList(
+          products: [
+            Product(name: 'Eggs'),
+            Product(name: 'Flour'),
+            Product(name: 'Chocolate chips'),],
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+class Shopping extends StatelessWidget {
+  Shopping({required this.product,
+    required this.inCard,
+    required this.onCardChanged})
+      : super(key: ObjectKey(product));
+  final Product product;
+  final bool inCard;
+  final CardChangedCallBack onCardChanged;
 
-  final String title;
+  Color _getColor(BuildContext context) {
+    return inCard ? Colors.black54 : Theme
+        .of(context)
+        .primaryColor;
+  }
+
+  TextStyle? _getTextStyle(BuildContext context) {
+    if (!inCard) return null;
+    return const TextStyle(
+        color: Colors.black54, decoration: TextDecoration.lineThrough);
+  }
 
   @override
-
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: () {
+        onCardChanged(product, inCard);
+      },
+      leading: CircleAvatar(
+        backgroundColor: _getColor(context),
+        child: Text(product.name[0]),
+      ),
+      title: Text(
+        product.name,
+        style: _getTextStyle(context),
+      ),
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
+class ShoppingList extends StatefulWidget {
+  // ignore: use_key_in_widget_constructors
+  const ShoppingList({required this.products, super.key});
+  final List<Product> products;
+  @override
+  State<ShoppingList> createState() => _ShoppingListState();
+}
+class _ShoppingListState extends State<ShoppingList> {
+  final _shoppingCart = <Product>{};
+  void _handleCardChanges(Product product, bool inCart) {
     setState(() {
-      _counter++;
+      if (!inCart) {
+        _shoppingCart.add(product);
+      } else {
+        _shoppingCart.remove(product);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
-    return Scaffold(
-      appBar: AppBar(
-
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              ' have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+    return Scaffold(body: ListView(padding: const EdgeInsets.symmetric(vertical: 8.0),
+      children: widget.products.map((product) {
+        return Shopping(product: product,
+          inCard: _shoppingCart.contains(product),
+          onCardChanged: _handleCardChanges);
+      }).toList(),),);
   }
 }
