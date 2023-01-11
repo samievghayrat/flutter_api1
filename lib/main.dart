@@ -1,131 +1,142 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
   runApp(
     MaterialApp(
-      theme: ThemeData(
-        primaryColor: Colors.teal,
-      ),
+      title: 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
       debugShowCheckedModeBanner: false,
-      title: 'Navigation Basics',
-      home: MyApp(),
+      home: const HomePage(),
     ),
   );
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class Contact {
+  final String name;
+  final String id;
 
-  @override
-  State<MyApp> createState() => _MyAppState();
+  Contact({required this.name}) : id = const Uuid().v4();
 }
 
-class _MyAppState extends State<MyApp> {
-  TextEditingController frontController = TextEditingController();
-  TextEditingController backController = TextEditingController();
+class ContactBook extends ValueNotifier<List<Contact>> {
+  ContactBook._sharedInstance() : super([Contact(name: 'Hello')]);
+
+  static final ContactBook _shared = ContactBook._sharedInstance();
+
+  factory ContactBook() => _shared;
+  final List<Contact> _contacts = [];
+
+  int get length => value.length;
+
+  void add({required Contact contact}) {
+    final contacts = value;
+
+    contacts.add(contact);
+    notifyListeners();
+  }
+
+  void remove({required Contact contact}) {
+    final contacts = value;
+    if (contacts.contains(contact)) {
+      contacts.remove(contact);
+      notifyListeners();
+    }
+  }
+
+  Contact? contact({required int atIndex}) =>
+      value.length > atIndex ? value[atIndex] : null;
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final contactBook = ContactBook();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('First Route'),
+        centerTitle: true,
+        title: const Text('Home Page'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Center(
-                child: TextField(
-                  controller: frontController,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: "Front",
-                      labelStyle: TextStyle(fontSize: 18)),
+      body: ValueListenableBuilder(
+        valueListenable: ContactBook(),
+        builder: (contact, value, child) {
+          final contacts = value as List<Contact>;
+          return ListView.builder(
+            itemCount: contactBook.length,
+            itemBuilder: (context, index) {
+              final contact = contacts[index];
+              return Dismissible(
+                onDismissed: (direction) {
+                  ContactBook().remove(contact: contact);
+                },
+                key: ValueKey(contact.id),
+                child: Material(
+                  color: Colors.white,
+                  elevation: 6.0,
+                  child: ListTile(
+                    title: Text(contact.name),
+                  ),
                 ),
-              ),
-            ),
-            Center(
-              child: TextField(
-                controller: backController,
-                decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: "Back",
-                    labelStyle: TextStyle(fontSize: 18)),
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: ElevatedButton(
-                  child: const Text('Second Route'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SecondRoute(
-                          front: frontController.text,
-                          back: backController.text,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => NewContactView()));
+        },
       ),
     );
   }
 }
 
-class SecondRoute extends StatefulWidget {
-  late final String front;
-  late final String back;
-
-  SecondRoute({super.key, required this.back, required this.front});
+class NewContactView extends StatefulWidget {
+  const NewContactView({Key? key}) : super(key: key);
 
   @override
-  State<SecondRoute> createState() => _SecondRouteState();
+  State<NewContactView> createState() => _NewContactViewState();
 }
 
-class _SecondRouteState extends State<SecondRoute> {
+class _NewContactViewState extends State<NewContactView> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    _controller = TextEditingController();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Second Route'),
+        title: const Text('Add a new contact'),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.blue),
-                  borderRadius: BorderRadius.circular(40)),
-              height: 160,
-              width: 200,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(widget.front),
-                  Text(widget.back),
-                ],
-              ),
-            ),
+          TextField(
+            controller: _controller,
+            decoration: const InputDecoration(
+                hintText: 'Enter a new contact name here...'),
           ),
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-                widget.front = '';
-                widget.back = '';
-              },
-              child: const Text('Go back!'),
-            ),
+          TextButton(
+            onPressed: () {
+              final contact = Contact(name: _controller.text);
+              ContactBook().add(contact: contact);
+              Navigator.pop(context);
+            },
+            child: const Text('Add contact'),
           ),
         ],
       ),
