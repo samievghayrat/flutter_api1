@@ -13,14 +13,14 @@ void main() {
 }
 
 class Contact {
+  final String number;
   final String name;
-  final String id;
 
-  Contact({required this.name}) : id = const Uuid().v4();
+  Contact({required this.name, required this.number});
 }
 
 class ContactBook extends ValueNotifier<List<Contact>> {
-  ContactBook._sharedInstance() : super([Contact(name: 'Hello')]);
+  ContactBook._sharedInstance() : super([]);
 
   static final ContactBook _shared = ContactBook._sharedInstance();
 
@@ -48,8 +48,71 @@ class ContactBook extends ValueNotifier<List<Contact>> {
       value.length > atIndex ? value[atIndex] : null;
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneNumberController;
+
+  @override
+  void initState() {
+    _phoneNumberController = TextEditingController();
+    _nameController = TextEditingController();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneNumberController = TextEditingController();
+    super.dispose();
+  }
+
+  _displayDialog(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Enter Contact'),
+          actions: <Widget>[
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(hintText: "Enter your name "),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                keyboardType: TextInputType.number,
+                controller: _phoneNumberController,
+                decoration:
+                    const InputDecoration(hintText: "Enter your number"),
+              ),
+            ),
+            TextButton(
+              child: const Text('Add'),
+              onPressed: () {
+                final contact = Contact(
+                    name: _nameController.text,
+                    number: _phoneNumberController.text.toString());
+                ContactBook().add(contact: contact);
+                Navigator.of(context).pop();
+                _nameController.clear();
+                _phoneNumberController.clear();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +120,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Home Page'),
+        title: const Text('Contacts'),
       ),
       body: ValueListenableBuilder(
         valueListenable: ContactBook(),
@@ -67,78 +130,30 @@ class HomePage extends StatelessWidget {
             itemCount: contactBook.length,
             itemBuilder: (context, index) {
               final contact = contacts[index];
-              return Dismissible(
-                onDismissed: (direction) {
-                  ContactBook().remove(contact: contact);
-                },
-                key: ValueKey(contact.id),
-                child: Material(
-                  color: Colors.white,
-                  elevation: 6.0,
-                  child: ListTile(
-                    title: Text(contact.name),
+              return Material(
+                color: Colors.white,
+                elevation: 8.00000,
+                child: ListTile(
+                  title: Text(contact.name),
+                  subtitle: Text(contact.number.toString()),
+                  leading: const Icon(Icons.shopping_bag),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      ContactBook().remove(contact: contact);
+                    },
                   ),
                 ),
-              );
+                );
             },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () async {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => NewContactView()));
+        onPressed: () {
+          _displayDialog(context);
         },
-      ),
-    );
-  }
-}
-
-class NewContactView extends StatefulWidget {
-  const NewContactView({Key? key}) : super(key: key);
-
-  @override
-  State<NewContactView> createState() => _NewContactViewState();
-}
-
-class _NewContactViewState extends State<NewContactView> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    _controller = TextEditingController();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add a new contact'),
-      ),
-      body: Column(
-        children: [
-          TextField(
-            controller: _controller,
-            decoration: const InputDecoration(
-                hintText: 'Enter a new contact name here...'),
-          ),
-          TextButton(
-            onPressed: () {
-              final contact = Contact(name: _controller.text);
-              ContactBook().add(contact: contact);
-              Navigator.pop(context);
-            },
-            child: const Text('Add contact'),
-          ),
-        ],
       ),
     );
   }
