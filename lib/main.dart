@@ -7,9 +7,28 @@ void main() {
       title: 'Flutter Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
       debugShowCheckedModeBanner: false,
-      home: const HomePage(),
+      home: ApiProvider(api: Api(), child: const HomePage()),
     ),
   );
+}
+
+class ApiProvider extends InheritedWidget {
+  final Api api;
+  final String uuid;
+
+  ApiProvider({Key? key, required this.api, required Widget child})
+      : uuid = const Uuid().v4(),
+        super(key: key, child: child);
+
+  @override
+  bool updateShouldNotify(covariant ApiProvider oldWidget) {
+    // TODO: implement updateShouldNotify
+    return uuid != oldWidget.uuid;
+  }
+
+  static ApiProvider of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<ApiProvider>()!;
+  }
 }
 
 class HomePage extends StatefulWidget {
@@ -20,40 +39,57 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late final _incrementCounter = ValueNotifier<int>(0);
+  ValueKey _textKey = const ValueKey<String?>(null);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Value Notifier"),
+        centerTitle: true,
+        title: Text(ApiProvider.of(context).api.dateAndTime ?? ''),
       ),
-      body: Center(
-        child: ValueListenableBuilder(
-          valueListenable: _incrementCounter,
-          builder: (context, value, _) {
-            return Text('counter: $value', style: titleStyle,);
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          setState(
-            () {
-              _incrementCounter.value++;
-              // _incrementCounter++;
-            },
-          );
+      body: GestureDetector(
+        onTap: () async {
+          final api = ApiProvider.of(context).api;
+          final dateAndTime = await api.getDateAndTime();
+          setState(() {
+            _textKey = ValueKey(dateAndTime);
+          });
         },
+        child: SizedBox.expand(
+          child: Container(
+            child: DateTimeWidget(
+              key: _textKey,
+            ),
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
+}
+
+class DateTimeWidget extends StatelessWidget {
+  const DateTimeWidget({Key? key}) : super(key: key);
 
   @override
-  void dispose() {
-    _incrementCounter.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final api = ApiProvider.of(context).api;
+    return Text(api.dateAndTime ?? 'Tap on screen to fetch data and time');
+  }
+}
+
+class Api {
+  String? dateAndTime;
+
+  Future<String> getDateAndTime() {
+    return Future.delayed(
+      const Duration(seconds: 1),
+      () => DateTime.now().toIso8601String(),
+    ).then((value) {
+      dateAndTime = value;
+      return value;
+    });
   }
 }
 
